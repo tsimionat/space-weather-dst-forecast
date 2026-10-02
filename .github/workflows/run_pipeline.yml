@@ -1,0 +1,67 @@
+# Runs the WHOLE project on GitHub's servers: download -> preprocess -> train -> evaluate.
+# Start it by hand: repository page -> "Actions" tab -> "run pipeline" -> "Run workflow".
+# Results (figures, metrics, trained model) are committed back to the repository
+# and are also downloadable as a zip ("artifact") from the run page.
+name: run pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      epochs:
+        description: "Maximum number of training epochs"
+        required: false
+        default: "60"
+
+permissions:
+  contents: write          # needed to commit the results back to the repository
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies (CPU-only PyTorch)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install numpy pandas matplotlib scikit-learn
+
+      - name: Cache the downloaded OMNI files between runs
+        uses: actions/cache@v5
+        with:
+          path: data/raw
+          key: omni2-raw-v1
+
+      - name: 1 - Download data
+        run: python 01_download_data.py
+
+      - name: 2 - Preprocess
+        run: python 02_preprocess.py
+
+      - name: 3 - Train the LSTM
+        run: python 03_train.py --epochs ${{ inputs.epochs }}
+
+      - name: 4 - Evaluate all models
+        run: python 04_evaluate.py
+
+      - name: Show the results table in the run summary
+        run: cat results/metrics_table.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results as a downloadable artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: results
+          path: results/
+
+      - name: Commit results to the repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results/
+          git commit -m "Update results from pipeline run" || echo "Nothing new to commit"
+          git push

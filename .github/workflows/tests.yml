@@ -1,0 +1,19 @@
+# Runs the unit tests automatically at every push (the green badge in the README).
+name: tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install dependencies (CPU-only PyTorch, much smaller)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install numpy pandas matplotlib scikit-learn pytest
+      - name: Run unit tests
+        run: python -m pytest -q

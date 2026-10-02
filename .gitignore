@@ -1,0 +1,16 @@
+# data are downloaded by 01_download_data.py: do not commit them
+data/raw/
+data/processed/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
